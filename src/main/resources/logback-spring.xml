@@ -1,0 +1,38 @@
+<!-- logback-spring.xml -->
+
+<configuration>
+    <property name="LOG_FILE_DIR" value="./logs/" /> <!-- 日志文件存放目录 -->
+
+
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE_DIR}/usercenterbackend.log</file> <!-- 日志文件名格式 -->
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>./logs/archive/usercenterbackend-%i.log.gz</fileNamePattern> <!-- 归档文件名格式 -->
+            <!-- 按照每天滚动 -->
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>10MB</maxFileSize> <!-- 每个日志文件最大大小 -->
+            </timeBasedFileNamingAndTriggeringPolicy>
+
+            <!-- 保留一定天数的日志文件 -->
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%date %level [%thread] %logger{10} [%file:%line] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 控制台日志输出配置 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%date %level [%thread] %logger{10} [%file:%line] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="FILE" />
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
