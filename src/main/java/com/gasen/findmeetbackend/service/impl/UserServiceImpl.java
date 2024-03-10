@@ -1,5 +1,6 @@
 package com.gasen.findmeetbackend.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.gasen.findmeetbackend.common.ErrorCode;
 import com.gasen.findmeetbackend.controller.UserController;
 import com.gasen.findmeetbackend.exception.BusinessExcetion;
@@ -8,19 +9,25 @@ import com.gasen.findmeetbackend.model.User;
 import com.gasen.findmeetbackend.mapper.UserMapper;
 import com.gasen.findmeetbackend.service.IUserService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.DigestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
+import java.util.Collection;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.gasen.findmeetbackend.constant.UserConstant.*;
 
@@ -35,11 +42,6 @@ import static com.gasen.findmeetbackend.constant.UserConstant.*;
 @Service
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
-
-    /**
-     * 盐值混淆密码
-     * */
-    private static final String SALT = "20240225";
 
     @Override
     public long userRegister(String userAccount, String password) {
@@ -91,7 +93,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     public boolean isUserBanned(User user) {
         if(user.getState()==banned)  {
             if(LocalDateTime.now().isAfter(user.getUnblockingTime())) {
-                lambdaUpdate().eq(User::getId, user.getId()).set(User::getState, USER).set(User::getUnblockingTime, null).update(new User());
+                user.setState(USER);
+                updateById(user);
                 log.info("用户{}已解封", user.getUserAccount());
                 return false;
             } else return true;
@@ -118,6 +121,40 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public List<User> usersList() {
         return baseMapper.selectList(null);
+    }
+
+    /**
+     * 根据标签搜索用户
+     * @param tags
+     * @return List<User>
+     */
+    @Override
+    public List<User> selectByTags(List<String> tags) {
+        /*sql拼接
+        if(CollectionUtils.isEmpty(tags)) {
+            throw new BusinessExcetion(ErrorCode.PARAMETER_ERROR);
+        }
+        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+        for(String tag:tags) {
+            userQueryWrapper.or().like("tags", tag);
+        }
+        List<User> users = baseMapper.selectList(userQueryWrapper);
+        return users.stream().map(UserController::getSaftyUser).toList();
+        */
+        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+        List<User> users = baseMapper.selectList(userQueryWrapper);
+        return users.stream().filter(user -> {
+            String userTags = user.getTags();
+            if (StringUtils.isBlank(userTags)) return false;
+            Gson gson = new Gson();
+            Set<String> tagsSet = gson.fromJson(userTags, new TypeToken<Set<String>>() {
+            }.getType());
+            for (String tag : tagsSet) {
+                if (tags.contains(tag))
+                    return true;
+            }
+            return false;
+        }).map(UserController::getSaftyUser).toList();
     }
 
 
