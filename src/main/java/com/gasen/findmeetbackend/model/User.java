@@ -114,6 +114,11 @@ public class User implements Serializable {
     @TableField(update = "now()")
     private LocalDateTime updateTime;
 
+    /**
+     * 标签
+     */
+    private String tags;
+
 
     public User(String userAccount, String password) {
         this.userAccount = userAccount;
