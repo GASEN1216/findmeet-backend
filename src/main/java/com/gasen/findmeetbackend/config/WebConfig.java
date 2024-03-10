@@ -1,7 +1,6 @@
 package com.gasen.findmeetbackend.config;
 
 import com.gasen.findmeetbackend.config.interceptor.GlobalRequestInterceptor;
-import com.gasen.findmeetbackend.config.interceptor.LoggingInterceptor;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -17,14 +16,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    @Resource
-    private LoggingInterceptor LoggingInterceptor;
-
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        //日志拦截器
-        registry.addInterceptor(LoggingInterceptor)
-                .addPathPatterns("/user/**");
         //全局请求拦截器
         registry.addInterceptor(new GlobalRequestInterceptor())
                 .addPathPatterns("/user/**")
