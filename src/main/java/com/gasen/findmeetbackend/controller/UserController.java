@@ -1,24 +1,29 @@
 package com.gasen.findmeetbackend.controller;
 
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gasen.findmeetbackend.common.BaseResponse;
 import com.gasen.findmeetbackend.common.ErrorCode;
 import com.gasen.findmeetbackend.common.ResultUtils;
+import com.gasen.findmeetbackend.exception.BusinessExcetion;
 import com.gasen.findmeetbackend.mapper.UserMapper;
 import com.gasen.findmeetbackend.model.Request.UserBannedDaysRequest;
 import com.gasen.findmeetbackend.model.Request.UserRegisterLoginRequest;
 import com.gasen.findmeetbackend.model.User;
 import com.gasen.findmeetbackend.service.IUserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static com.gasen.findmeetbackend.constant.UserConstant.ADMIN;
-import static com.gasen.findmeetbackend.constant.UserConstant.USER_LOGIN_IN;
+import static com.gasen.findmeetbackend.constant.UserConstant.*;
 
 /**
  * <p>
@@ -45,6 +50,7 @@ public class UserController {
      * 更新用户
      * User传进来要有id
      * */
+    @Operation(summary = "更新用户信息")
     @PostMapping("/update")
     public BaseResponse updateUser(@RequestBody User user, HttpServletRequest request) {
         //TODO：判断是否是用户自己，是的话也可以进入修改
@@ -57,7 +63,7 @@ public class UserController {
                 log.info("id为"+user.getId()+"的用户更新信息");
                 if(userService.updateById(user))
                 //4.返回更新后的用户信息
-                    return ResultUtils.success(getSaftyUser(user));
+                    return ResultUtils.success(getSaftyUser(userMapper.selectById(user.getId())));
                 else return ResultUtils.error(ErrorCode.SYSTEM_ERROR,"更新用户信息失败");
             } else return ResultUtils.error(ErrorCode.USER_NOT_EXIST);
         }else return ResultUtils.error(ErrorCode.USER_NOT_LOGIN_OR_NOT_ADMIN);
@@ -94,6 +100,7 @@ public class UserController {
             User latestUser = getSaftyUser(userMapper.selectById(user.getId()));
             return ResultUtils.success(latestUser);
         }
+
         //3.为null返回用户未登录
         else return ResultUtils.error(ErrorCode.USER_NOT_LOGIN);
     }
@@ -102,18 +109,35 @@ public class UserController {
      * 获取所有用户信息
      */
     @GetMapping("/all")
-    public BaseResponse getAllUser(HttpServletRequest request) {
+    public BaseResponse<Page<User>> getAllUser(long pageNum, long pageSize, HttpServletRequest request) {
         if(isAdmin(request)) {
             log.info("请求获取所有用户信息");
-            List<User> users = userService.usersList();
-            // 使用 Java 8 Stream API 来处理用户列表并生成新的安全用户列表
-            List<User> safeUsers = users.stream()
-                    .map(UserController::getSaftyUser) // 对每个用户应用安全处理
-                    .toList(); // 收集处理后的用户到新的列表中
-            return ResultUtils.success(safeUsers);
+//            List<User> users = userService.usersList();
+//            // 使用 Java 8 Stream API 来处理用户列表并生成新的安全用户列表
+//            List<User> safeUsers = users.stream()
+//                    .map(UserController::getSaftyUser) // 对每个用户应用安全处理
+//                    .toList(); // 收集处理后的用户到新的列表中
+//            return ResultUtils.success(safeUsers);
+            // 使用 MyBatis Plus 的分页查询功能,如果想暂时查询所有将pageSize<0
+            QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+            Page<User> userList = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
+            return ResultUtils.success(userList);
         }else return ResultUtils.error(ErrorCode.USER_NOT_LOGIN_OR_NOT_ADMIN);
     }
 
+
+    /**
+     * 根据标签搜索用户
+     * @param tags
+     * @return BaseResponse
+     */
+    @Operation(summary = "根据标签搜索用户")
+    @GetMapping("/search/tags")
+    public BaseResponse searchByTags(@RequestParam List<String> tags) {
+        if(CollectionUtils.isEmpty(tags))
+            throw new BusinessExcetion(ErrorCode.PARAMETER_ERROR);
+        return ResultUtils.success(userService.selectByTags(tags));
+    }
 
     /**
      * 用户注册
@@ -145,7 +169,7 @@ public class UserController {
             return ResultUtils.error(ErrorCode.PARAMETER_ERROR,"账户名或密码为空");
         }
         User user1 = userService.userLogin(userAccount, password, request);
-        if(user1.getUnblockingTime()!=null)
+        if(user1.getUnblockingTime()!=null&&user1.getState()==null)
             return ResultUtils.error(ErrorCode.BANNED_USER,user1.getUnblockingTime());
         User saftyUser = getSaftyUser(user1);
         return ResultUtils.success(saftyUser);
@@ -197,6 +221,7 @@ public class UserController {
         saftyUser.setPhone(user.getPhone());
         saftyUser.setSignIn(user.getSignIn());
         saftyUser.setUnblockingTime(user.getUnblockingTime());
+        saftyUser.setTags(user.getTags());
         return saftyUser;
     }
 
