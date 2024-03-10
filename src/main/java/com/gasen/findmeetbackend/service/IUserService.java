@@ -26,4 +26,6 @@ public interface IUserService extends IService<User> {
     Boolean userBannedDays(UserBannedDaysRequest userBannedDaysRequest);
 
     List<User> usersList();
+
+    List<User> selectByTags(List<String> tags);
 }
