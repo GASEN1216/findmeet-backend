@@ -5,29 +5,26 @@ import com.gasen.findmeetbackend.common.ErrorCode;
 import com.gasen.findmeetbackend.controller.UserController;
 import com.gasen.findmeetbackend.exception.BusinessExcetion;
 import com.gasen.findmeetbackend.model.Request.UserBannedDaysRequest;
-import com.gasen.findmeetbackend.model.User;
+import com.gasen.findmeetbackend.model.domain.User;
 import com.gasen.findmeetbackend.mapper.UserMapper;
 import com.gasen.findmeetbackend.service.IUserService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.gasen.findmeetbackend.utils.AlgorithmUtils;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.math3.util.Pair;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.DigestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
-import java.util.Collection;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static com.gasen.findmeetbackend.constant.UserConstant.*;
 
@@ -155,6 +152,47 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             }
             return false;
         }).map(UserController::getSaftyUser).toList();
+    }
+
+    /**
+     * 匹配伙伴
+     * @param user
+     * @return
+     */
+    @Override
+    public List<User> match(User user) {
+        //取到用户标签
+        Gson gson = new Gson();
+        List<String> userTags = gson.fromJson(baseMapper.selectById(user.getId()).getTags(), new TypeToken<List<String>>() {
+        }.getType());
+        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+        //排除自己
+        userQueryWrapper.ne("id", user.getId());
+        userQueryWrapper.isNotNull("tags");
+        userQueryWrapper.select("id","tags");
+        List<User> users = baseMapper.selectList(userQueryWrapper);
+        List<Pair<Integer, User>> matchUsersList = new ArrayList<>();
+        for(User u : users) {
+            List<String> uTags = gson.fromJson(u.getTags(), new TypeToken<List<String>>() {
+            }.getType());
+            int i = AlgorithmUtils.minDistance(userTags, uTags);
+            matchUsersList.add(new Pair<>(i,u));
+        }
+        List<Pair<Integer, User>> topUsersList = matchUsersList.stream().sorted(Comparator.comparingInt(Pair::getKey)).limit(5).toList();
+        List<Integer> matchedUsersList = topUsersList.stream().map(pair -> pair.getValue().getId()).toList();
+        QueryWrapper<User> userQueryWrapper1 = new QueryWrapper<>();
+        userQueryWrapper1.in("id", matchedUsersList);
+        List<User> matchestUsers = baseMapper.selectList(userQueryWrapper1).stream().map(UserController::getSaftyUser).toList();
+        List<User> finalMatchestUsers = new ArrayList<>();
+        for(int i : matchedUsersList) {
+            for(User j : matchestUsers) {
+                if(i == j.getId()) {
+                    finalMatchestUsers.add(j);
+                    break;
+                }
+            }
+        }
+        return finalMatchestUsers;
     }
 
 
