@@ -1,7 +1,7 @@
 package com.gasen.findmeetbackend.service;
 
 import com.gasen.findmeetbackend.model.Request.UserBannedDaysRequest;
-import com.gasen.findmeetbackend.model.User;
+import com.gasen.findmeetbackend.model.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -28,4 +28,6 @@ public interface IUserService extends IService<User> {
     List<User> usersList();
 
     List<User> selectByTags(List<String> tags);
+
+    List<User> match(User user);
 }
