@@ -5,23 +5,26 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gasen.findmeetbackend.common.BaseResponse;
 import com.gasen.findmeetbackend.common.ErrorCode;
+import com.gasen.findmeetbackend.common.PageRequest;
 import com.gasen.findmeetbackend.common.ResultUtils;
 import com.gasen.findmeetbackend.exception.BusinessExcetion;
 import com.gasen.findmeetbackend.mapper.UserMapper;
 import com.gasen.findmeetbackend.model.Request.UserBannedDaysRequest;
 import com.gasen.findmeetbackend.model.Request.UserRegisterLoginRequest;
-import com.gasen.findmeetbackend.model.User;
+import com.gasen.findmeetbackend.model.domain.User;
 import com.gasen.findmeetbackend.service.IUserService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.gasen.findmeetbackend.constant.UserConstant.*;
 
@@ -44,6 +47,9 @@ public class UserController {
     @Resource
     private UserMapper userMapper;
 
+    @Resource
+    private RedisTemplate redisTemplate;
+
     //TODO：ZSet做排行榜
 
     /**
@@ -53,16 +59,16 @@ public class UserController {
     @Operation(summary = "更新用户信息")
     @PostMapping("/update")
     public BaseResponse updateUser(@RequestBody User user, HttpServletRequest request) {
-        //TODO：判断是否是用户自己，是的话也可以进入修改
-        //1.是否为管理员
-        if(isAdmin(request)) {
+        //1.是否为管理员或自己
+        User current_user = (User) request.getSession().getAttribute(USER_LOGIN_IN);
+        if(current_user.getState() == ADMIN || user.getId().equals(current_user.getId())) {
             //2.判断用户是否存在
             if(userService.lambdaQuery().eq(User::getId, user.getId()).exists()) {
                 //TODO：判断是否有更新信息，未更新直接返回
                 //3.更新用户信息
                 log.info("id为"+user.getId()+"的用户更新信息");
                 if(userService.updateById(user))
-                //4.返回更新后的用户信息
+                    //4.返回更新后的用户信息
                     return ResultUtils.success(getSaftyUser(userMapper.selectById(user.getId())));
                 else return ResultUtils.error(ErrorCode.SYSTEM_ERROR,"更新用户信息失败");
             } else return ResultUtils.error(ErrorCode.USER_NOT_EXIST);
@@ -106,21 +112,29 @@ public class UserController {
     }
 
     /**
-     * 获取所有用户信息
+     * 获取推荐用户信息long pageNum, long pageSize
      */
-    @GetMapping("/all")
-    public BaseResponse<Page<User>> getAllUser(long pageNum, long pageSize, HttpServletRequest request) {
+    @GetMapping("/recommend")
+    public BaseResponse<Page<User>> getRecommendUser(PageRequest pageRequest, HttpServletRequest request) {
+        long pageNum = pageRequest.getPageNum();
+        long pageSize = pageRequest.getPageSize();
         if(isAdmin(request)) {
-            log.info("请求获取所有用户信息");
-//            List<User> users = userService.usersList();
-//            // 使用 Java 8 Stream API 来处理用户列表并生成新的安全用户列表
-//            List<User> safeUsers = users.stream()
-//                    .map(UserController::getSaftyUser) // 对每个用户应用安全处理
-//                    .toList(); // 收集处理后的用户到新的列表中
-//            return ResultUtils.success(safeUsers);
+            //有缓存则直接返回缓存
+            User user = (User) request.getSession().getAttribute(USER_LOGIN_IN);
+            String redisKey = String.format("findmeet:user:recommend:%s:%s:%s", user.getId(),pageNum,pageSize);
+            ValueOperations valueOperations = redisTemplate.opsForValue();
+            Page<User> userPage = (Page<User>) valueOperations.get(redisKey);
+            if(userPage!=null) {
+                return ResultUtils.success(userPage);
+            }
+            //无缓存则查询数据库
             // 使用 MyBatis Plus 的分页查询功能,如果想暂时查询所有将pageSize<0
             QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+            // 去除自己
+            queryWrapper.ne("id", user.getId());
             Page<User> userList = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
+            valueOperations.set(redisKey,userList,10, TimeUnit.SECONDS);
+            log.info("接口 /recommend 缓存成功");
             return ResultUtils.success(userList);
         }else return ResultUtils.error(ErrorCode.USER_NOT_LOGIN_OR_NOT_ADMIN);
     }
@@ -197,6 +211,19 @@ public class UserController {
     }
 
     /**
+     * 匹配相似标签的伙伴
+     * @param request
+     * @return BaseResponse
+     */
+    @GetMapping("/match")
+    public BaseResponse match(HttpServletRequest request) {
+        User user = (User) request.getSession().getAttribute(USER_LOGIN_IN);
+        if(user==null)
+            return ResultUtils.error(ErrorCode.USER_NOT_LOGIN);
+        return ResultUtils.success(userService.match(user));
+    }
+
+    /**
      * 用户信息
      * */
     public void userDetail(UserRegisterLoginRequest user, String behavior) {
@@ -228,7 +255,7 @@ public class UserController {
     /**
      * 是否是管理员
      * */
-    public boolean isAdmin(HttpServletRequest request) {
+    public static boolean isAdmin(HttpServletRequest request) {
         User user = (User) request.getSession().getAttribute(USER_LOGIN_IN);
         return user != null && user.getState() == ADMIN;
     }
