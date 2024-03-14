@@ -12,7 +12,9 @@ public enum ErrorCode {
     USER_NOT_LOGIN(1003, "用户未登录", ""),
     USER_NOT_LOGIN_OR_NOT_ADMIN(1004, "用户未登录或非管理员", ""),
     SYSTEM_ERROR(1005, "系统错误", ""),
-    BANNED_USER(1006, "用户已被封禁", "");
+    BANNED_USER(1006, "用户已被封禁", ""),
+    POWERLESS(1007, "权限不足", ""),
+    TEAM_NOT_EXIST(1008, "队伍不存在", "");
 
 
     private final int code;
