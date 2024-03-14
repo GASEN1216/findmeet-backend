@@ -4,18 +4,16 @@ import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.read.listener.ReadListener;
 import com.alibaba.excel.util.ListUtils;
 
-import com.gasen.findmeetbackend.controller.UserController;
-import com.gasen.findmeetbackend.mapper.UserMapper;
-import com.gasen.findmeetbackend.model.User;
+import com.gasen.findmeetbackend.model.domain.User;
 import com.gasen.findmeetbackend.service.IUserService;
-import com.gasen.findmeetbackend.service.impl.UserServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.DigestUtils;
 
 import java.util.List;
+
+import static com.gasen.findmeetbackend.constant.UserConstant.SALT;
 
 /**
  * @author GASEN
@@ -54,7 +52,7 @@ public class importUserListener implements ReadListener<importUser> {
 
     private void saveData() {
         log.info("{}条数据，开始存储数据库！", cachedDataList.size());
-        cachedDataList.forEach(user -> user.setPassword(DigestUtils.md5DigestAsHex(user.getPassword().getBytes())));
+        cachedDataList.forEach(user -> user.setPassword(DigestUtils.md5DigestAsHex((user.getPassword()+SALT).getBytes())));
         userService.saveBatch(cachedDataList);
         log.info("存储数据库成功！");
     }
