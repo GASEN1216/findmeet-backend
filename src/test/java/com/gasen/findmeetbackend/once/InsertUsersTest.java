@@ -1,7 +1,6 @@
 package com.gasen.findmeetbackend.once;
 
-import com.gasen.findmeetbackend.mapper.UserMapper;
-import com.gasen.findmeetbackend.model.User;
+import com.gasen.findmeetbackend.model.domain.User;
 import com.gasen.findmeetbackend.service.IUserService;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
