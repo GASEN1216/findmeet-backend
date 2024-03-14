@@ -1,6 +1,6 @@
 package com.gasen.findmeetbackend;
 
-import com.gasen.findmeetbackend.model.User;
+import com.gasen.findmeetbackend.model.domain.User;
 import com.gasen.findmeetbackend.service.impl.UserServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
