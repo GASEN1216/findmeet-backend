@@ -1,6 +1,6 @@
 package com.gasen.findmeetbackend.mapper;
 
-import com.gasen.findmeetbackend.model.User;
+import com.gasen.findmeetbackend.model.domain.User;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**
