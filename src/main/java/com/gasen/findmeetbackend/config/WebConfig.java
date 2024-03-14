@@ -20,6 +20,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         //全局请求拦截器
         registry.addInterceptor(new GlobalRequestInterceptor())
+                .addPathPatterns("/team/**")
                 .addPathPatterns("/user/**")
                 .excludePathPatterns("/user/login", "/user/register", "/user/current"); // 排除不需要检查session的路径
     }
