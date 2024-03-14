@@ -1,13 +1,9 @@
 package com.gasen.findmeetbackend.once.importuser;
-import java.time.LocalDateTime;
 
 import com.alibaba.excel.EasyExcel;
 import com.gasen.findmeetbackend.mapper.UserMapper;
-import com.gasen.findmeetbackend.model.User;
+import com.gasen.findmeetbackend.model.domain.User;
 import jakarta.annotation.Resource;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 
