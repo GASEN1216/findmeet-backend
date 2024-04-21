@@ -1,4 +1,4 @@
-# 知遇--知心匹配平台
+# 知遇匹配平台
 
 > 作者：[GASEN](https://github.com/GASEN1216)
 
