@@ -163,7 +163,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     public List<User> match(User user) {
         //取到用户标签
         Gson gson = new Gson();
-        List<String> userTags = gson.fromJson(baseMapper.selectById(user.getId()).getTags(), new TypeToken<List<String>>() {
+        String tags = baseMapper.selectById(user.getId()).getTags();
+        if(StringUtils.isBlank(tags)) tags = "[]";
+        List<String> userTags = gson.fromJson(tags, new TypeToken<List<String>>() {
         }.getType());
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
         //排除自己
